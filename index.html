@@ -68,7 +68,7 @@
 
     <div id="start-overlay">
         <h1 style="color:white; margin-bottom:10px;">👋 歡迎體驗</h1>
-        <p style="color:#aaa; margin-bottom:20px;">V14.0 方琳涵專屬版</p>
+        <p style="color:#aaa; margin-bottom:20px;">V14.0 VIP專屬版</p>
         <div id="step-permission" style="width:100%; display:flex; justify-content:center;">
             <button class="btn-action" onclick="firstStart()">🚀 啟動相機</button>
         </div>
@@ -310,4 +310,5 @@
     function switchStage(id) { document.querySelectorAll('.stage').forEach(el => { el.style.display = 'none'; el.classList.remove('active'); }); const target = document.getElementById(id); target.style.display = 'flex'; setTimeout(()=>target.classList.add('active'), 10); }
 </script>
 </body>
+
 </html>
