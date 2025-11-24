@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Live Mirror AI - V14.0 VIP</title>
+    <style>
+        /* M28 視覺傳播：黑色系高質感設計 */
+        :root { --bg-color: #000000; --panel-bg: #1a1a1a; --accent-color: #d4af37; /* 改成金色代表 VIP */ --text-primary: #ffffff; }
+        * { box-sizing: border-box; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg-color); color: var(--text-primary); display: flex; justify-content: center; align-items: center; }
+        #app-window { width: 100%; height: 100dvh; max-width: 500px; background: var(--panel-bg); display: flex; flex-direction: column; position: relative; overflow: hidden; }
+        
+        header { padding: 15px; text-align: center; border-bottom: 1px solid #333; font-weight: bold; flex: none; font-size: 18px; display: flex; justify-content: center; align-items: center; gap: 10px; color: var(--accent-color); }
+        .version-tag { font-size: 10px; background: #333; padding: 2px 6px; border-radius: 4px; color: #aaa; }
+
+        .stage { flex: 1; display: none; flex-direction: column; align-items: center; padding: 20px; overflow-y: auto; }
+        .active { display: flex; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .viewport { width: 100%; aspect-ratio: 3/4; background: #000; border-radius: 16px; border: 2px solid #444; overflow: hidden; position: relative; display: flex; justify-content: center; align-items: center; margin-bottom: 15px; flex: none; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+        video, img { width: 100%; height: 100%; object-fit: cover; }
+        .mirror { transform: scaleX(-1); }
+
+        .dna-section { width: 100%; background: #252525; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #444; }
+        .dna-title { font-size: 14px; color: var(--accent-color); margin-bottom: 10px; font-weight: bold; display: flex; align-items: center; gap: 5px; }
+        .tags-container { display: flex; flex-wrap: wrap; gap: 8px; }
+        .tag-check { display: none; }
+        .tag-label { padding: 6px 12px; background: #333; border-radius: 20px; font-size: 13px; color: #ccc; cursor: pointer; border: 1px solid #555; transition: all 0.2s; user-select: none; }
+        .tag-check:checked + .tag-label { background: var(--accent-color); color: black; border-color: var(--accent-color); font-weight: bold; }
+
+        /* 遮罩層 */
+        #start-overlay, #question-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.96); z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; text-align: center; }
+        #question-overlay { display: none; z-index: 1000; } 
+
+        .btn-action { width: 80%; padding: 14px 0; border-radius: 50px; border: none; background: var(--accent-color); color: black; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; box-shadow: 0 0 20px rgba(212, 175, 55, 0.3); }
+        .btn-secondary { background: #333; border: 1px solid #555; margin-top: 15px; color: white; }
+        
+        select.camera-select { width: 100%; padding: 12px; margin-bottom: 15px; background: #333; color: white; border: 1px solid #555; border-radius: 12px; font-size: 16px; outline: none; }
+        
+        /* 8個風格的 Grid */
+        .style-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%; padding-bottom: 40px;}
+        .style-card { background: #2a2a2a; border: 1px solid #444; border-radius: 12px; padding: 12px 5px; cursor: pointer; text-align: center; font-size: 15px; position: relative; overflow: hidden; }
+        .style-card:active { transform: scale(0.98); }
+        
+        /* 特殊風格標記 */
+        .style-real { border-color: #ff9900; }
+        .style-tao { border-color: #ffffff; background: linear-gradient(45deg, #2a2a2a, #444); }
+        .style-tao::after { content: "聖潔"; position: absolute; top: 0; right: 0; background: white; color: black; font-size: 10px; padding: 2px 6px; border-bottom-left-radius: 6px; font-weight: bold; }
+
+        .gender-toggle { display: flex; gap: 10px; margin-bottom: 15px; width: 100%; }
+        .gender-option { flex: 1; text-align: center; padding: 10px; background: #333; border-radius: 10px; border: 1px solid #555; cursor: pointer; font-weight: bold; color: #888; font-size: 15px; }
+        .gender-option.selected { background: var(--accent-color); color: black; }
+        
+        /* 彈出文字動畫 */
+        .pop-text { font-size: 20px; line-height: 1.6; animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes popIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        #canvas { display: none; }
+    </style>
+</head>
+<body>
+
+<div id="app-window">
+    <header>
+        Live Mirror AI <span class="version-tag">V14.0 VIP</span>
+    </header>
+
+    <div id="start-overlay">
+        <h1 style="color:white; margin-bottom:10px;">👋 歡迎體驗</h1>
+        <p style="color:#aaa; margin-bottom:20px;">V14.0 方琳涵專屬版</p>
+        <div id="step-permission" style="width:100%; display:flex; justify-content:center;">
+            <button class="btn-action" onclick="firstStart()">🚀 啟動相機</button>
+        </div>
+        <div id="step-selection" style="display:none; width:100%;">
+            <p style="color:white; margin-bottom:15px;">已偵測到相機：</p>
+            <select id="camera-list" class="camera-select"></select>
+            <div style="display:flex; justify-content:center;"><button class="btn-action" onclick="startSpecificCamera()">✅ 確認</button></div>
+        </div>
+        <p id="error-msg" style="color: #ff3366; font-size: 12px; margin-top: 20px; max-width: 80%;"></p>
+    </div>
+
+    <div id="question-overlay">
+        <div id="q-step-1">
+            <h1 style="font-size: 50px; margin-bottom: 10px;">💎</h1>
+            <h2 style="color: var(--accent-color); margin-bottom: 15px;">偵測到 VIP 氣場</h2>
+            <p class="pop-text" style="color: #ddd; margin-bottom: 30px;">
+                系統掃描到一股非凡的優雅氣質...<br>
+                冒昧請問，您是否為我們尊貴的<br><br>
+                <b style="color:white; font-size: 24px; border-bottom: 2px solid var(--accent-color);">「方琳涵 小姐」</b> 本人？
+            </p>
+            <button class="btn-action" onclick="answerQuestion(true)">🌹 是的，我是</button>
+            <button class="btn-action btn-secondary" onclick="answerQuestion(false)">🤔 不是耶，我是別人</button>
+        </div>
+        <div id="q-step-2" style="display:none;">
+            <h1 style="font-size: 50px; margin-bottom: 10px;">✨</h1>
+            <h2 style="color: var(--accent-color); margin-bottom: 15px;">禮遇確認</h2>
+            <p id="praise-text" class="pop-text" style="color: #ddd; margin-bottom: 30px;">
+                </p>
+            <div style="width:70%; height:6px; background:#333; margin: 0 auto; border-radius:3px;">
+                <div id="praise-bar" style="width:0%; height:100%; background:var(--accent-color); transition:width 2s;"></div>
+            </div>
+            <p style="color:#666; font-size:12px; margin-top:10px;">正在解鎖頂級算力資源...</p>
+        </div>
+    </div>
+
+    <div id="stage-1" class="stage">
+        <div class="viewport">
+            <video id="webcam" playsinline class="mirror" autoplay></video>
+        </div>
+        <button class="btn-action" onclick="capturePhoto()">📸 拍照</button>
+        <p style="margin-top:20px; font-size:14px; color:#666; cursor:pointer; text-decoration: underline;" onclick="location.reload()">[切換鏡頭]</p>
+    </div>
+
+    <div id="stage-2" class="stage">
+        <div class="viewport" style="width: 140px; height: 140px; border-radius: 50%; border-color: var(--accent-color); margin-top: 5px;">
+            <img id="preview-img" class="mirror" src="">
+        </div>
+        
+        <div class="gender-toggle">
+            <div class="gender-option" onclick="selectGender('boy')" id="btn-boy">👦 男生</div>
+            <div class="gender-option selected" onclick="selectGender('girl')" id="btn-girl">👧 女生</div>
+        </div>
+
+        <div class="dna-section">
+            <div class="dna-title">🧬 告訴 AI 您的特徵 (精準度UP)</div>
+            <div class="tags-container">
+                <label><input type="checkbox" class="tag-check" value="glasses"><span class="tag-label">👓 戴眼鏡</span></label>
+                <label><input type="checkbox" class="tag-check" value="short hair"><span class="tag-label">💇 短髮</span></label>
+                <label><input type="checkbox" class="tag-check" value="long hair" checked><span class="tag-label">👱‍♀️ 長髮</span></label>
+                <label><input type="checkbox" class="tag-check" value="curly hair"><span class="tag-label">➰ 捲髮</span></label>
+                <label><input type="checkbox" class="tag-check" value="smile" checked><span class="tag-label">😄 微笑</span></label>
+                <label><input type="checkbox" class="tag-check" value="office lady"><span class="tag-label">💼 氣質</span></label>
+            </div>
+        </div>
+
+        <h3 style="width:100%; font-size:14px; color:#888; margin-bottom:10px;">選擇風格 (共8款)：</h3>
+        <div class="style-grid">
+            <div class="style-card" onclick="triggerTrap('pixar')">🧸 皮克斯風</div>
+            <div class="style-card" onclick="triggerTrap('ghibli')">🍃 吉卜力風</div>
+            <div class="style-card" onclick="triggerTrap('cyberpunk')">🌃 賽博龐克</div>
+            <div class="style-card" onclick="triggerTrap('oil')">🎨 梵谷油畫</div>
+            <div class="style-card" onclick="triggerTrap('comic')">💥 美式漫畫</div>
+            <div class="style-card" onclick="triggerTrap('ink')">🖌️ 東方水墨</div>
+            <div class="style-card style-real" onclick="triggerTrap('real')">📸 真人擬真</div>
+            <div class="style-card style-tao" onclick="triggerTrap('taoist')">🕊️ 白陽聖潔</div>
+        </div>
+        <button style="margin-top:5px; background:transparent; border:none; color:#666; font-size:15px;" onclick="location.reload()">⬅️ 重拍</button>
+    </div>
+
+    <div id="stage-3" class="stage" style="justify-content: center;">
+        <h2>⚡ AI 正在為貴賓繪製...</h2>
+        <div style="width:70%; height:6px; background:#333; margin-top:20px; border-radius:3px;">
+            <div id="progress-bar" style="width:0%; height:100%; background:var(--accent-color); transition:width 0.3s;"></div>
+        </div>
+        <p id="prompt-debug" style="color:#666; font-size:12px; margin-top:15px; max-width:80%; text-align:center;">Loading...</p>
+    </div>
+
+    <div id="stage-4" class="stage">
+        <h2>✨ 您的專屬畫像</h2>
+        <div class="viewport">
+            <img id="final-result" src="">
+        </div>
+        <p style="color: var(--accent-color); font-weight: bold; font-size: 18px; margin-top: 5px;">👇 長按圖片儲存 👇</p>
+        <div style="font-size: 13px; color: #888; margin-top: 20px; border-top: 1px solid #333; padding-top: 15px; width: 100%; text-align: center;">
+            分享連結：
+            <div id="qrcode-container" style="margin-top: 10px; background: white; padding: 10px; display: inline-block; border-radius: 12px;"></div>
+        </div>
+        <button class="btn-action" onclick="location.reload()" style="background:#333; color:white; font-size:16px; margin-top: 20px;">🔄 再玩一次</button>
+    </div>
+
+    <canvas id="canvas"></canvas>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<script>
+    const video = document.getElementById('webcam'), canvas = document.getElementById('canvas'), previewImg = document.getElementById('preview-img'), finalImg = document.getElementById('final-result'), cameraList = document.getElementById('camera-list'), errorMsg = document.getElementById('error-msg');
+    let currentGender = 'girl'; 
+    let pendingStyle = ''; 
+
+    async function firstStart() {
+        errorMsg.innerText = "";
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            await listCameras();
+            stream.getTracks().forEach(track => track.stop());
+            document.getElementById('step-permission').style.display = 'none';
+            document.getElementById('step-selection').style.display = 'block';
+        } catch (err) { errorMsg.innerText = "啟動失敗：" + err.message + "\n請用 Chrome 開啟"; }
+    }
+    async function listCameras() {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        cameraList.innerHTML = '';
+        videoDevices.forEach((device, index) => {
+            const option = document.createElement('option');
+            option.value = device.deviceId;
+            let label = device.label || `相機 ${index + 1}`;
+            if (label.toLowerCase().includes('back') || label.includes('後')) label = "📸 後置鏡頭";
+            else if (label.toLowerCase().includes('front') || label.includes('前')) label = "👤 前置自拍";
+            option.text = label;
+            cameraList.appendChild(option);
+        });
+    }
+    async function startSpecificCamera() {
+        const deviceId = cameraList.value;
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId } } });
+            video.srcObject = stream;
+            document.getElementById('start-overlay').style.display = 'none';
+            switchStage('stage-1');
+        } catch (err) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                document.getElementById('start-overlay').style.display = 'none';
+                switchStage('stage-1');
+            } catch (fatalErr) { alert("無法啟動相機"); }
+        }
+    }
+    function selectGender(g) { currentGender = g; document.getElementById('btn-boy').classList.toggle('selected', g==='boy'); document.getElementById('btn-girl').classList.toggle('selected', g==='girl'); }
+    function capturePhoto() {
+        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d'); ctx.translate(canvas.width, 0); ctx.scale(-1, 1);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        previewImg.src = canvas.toDataURL('image/png'); switchStage('stage-2');
+    }
+
+    function getDNA() {
+        const checkboxes = document.querySelectorAll('.tag-check:checked');
+        let tags = [];
+        checkboxes.forEach(cb => tags.push(cb.value));
+        return tags.join(", ");
+    }
+
+    // ============================================
+    // V14.0 VIP 攔截機制
+    // ============================================
+    function triggerTrap(styleKey) {
+        pendingStyle = styleKey; 
+        document.getElementById('question-overlay').style.display = 'flex';
+        document.getElementById('q-step-1').style.display = 'block';
+        document.getElementById('q-step-2').style.display = 'none';
+    }
+
+    function answerQuestion(isShe) {
+        document.getElementById('q-step-1').style.display = 'none';
+        document.getElementById('q-step-2').style.display = 'block';
+        
+        const textEl = document.getElementById('praise-text');
+        
+        if (isShe) {
+            // 回答「是本人」: 尊榮禮遇
+            textEl.innerHTML = "<b>歡迎方小姐！</b>🌹<br>系統已確認您的 VIP 身份。<br>您的氣質優雅非凡，<br>AI 已自動升級為<b>「頂級渲染模式」</b>，<br>專為襯托您的光彩而設！";
+        } else {
+            // 回答「不是」: 依然讚美
+            textEl.innerHTML = "真的嗎？🤔<br>但系統顯示您的<b>「優雅指數」</b><br>已經達到方小姐的 VIP 等級！<br>AI 判定您為<b>「特級貴賓」</b>，<br>我們依然會用最高規格為您作畫！";
+        }
+
+        const bar = document.getElementById('praise-bar');
+        setTimeout(() => { bar.style.width = '100%'; }, 100);
+
+        // 3秒後開始
+        setTimeout(() => {
+            document.getElementById('question-overlay').style.display = 'none';
+            realGenerate();
+        }, 3500);
+    }
+
+    function realGenerate() {
+        switchStage('stage-3'); 
+        simulateProgress();
+
+        let styleKey = pendingStyle;
+        let genderBase = currentGender === 'boy' ? "handsome man, male" : "beautiful woman, female";
+        let dna = getDNA();
+        
+        let basePrompt = "";
+        
+        // 1-6 原本風格
+        if(styleKey === 'pixar')    basePrompt = `cute 3d pixar style ${genderBase}, ${dna}, studio lighting, big eyes, 8k`;
+        else if(styleKey === 'ghibli')   basePrompt = `studio ghibli anime portrait of ${genderBase}, ${dna}, hayao miyazaki style, watercolor background`;
+        else if(styleKey === 'cyberpunk') basePrompt = `cyberpunk portrait of ${genderBase}, ${dna}, neon lights, mechanical parts, futuristic city`;
+        else if(styleKey === 'oil')      basePrompt = `van gogh oil painting portrait of ${genderBase}, ${dna}, thick brushstrokes, artistic, starry night`;
+        else if(styleKey === 'comic')    basePrompt = `american comic superhero ${genderBase}, ${dna}, bold lines, halftone dots, marvel style`;
+        else if(styleKey === 'ink')      basePrompt = `chinese ink wash painting portrait of ${genderBase}, ${dna}, black and white, sumi-e, artistic, red stamp`;
+        
+        // 7 真人版
+        else if(styleKey === 'real') {
+            basePrompt = `(masterpiece), best quality, realistic photo of a ${genderBase}, ${dna}, highly detailed face, dslr, 8k, raw photo, soft lighting, looking at camera`;
+        }
+        
+        // 8 白陽聖潔 (一貫道風格)
+        else if(styleKey === 'taoist') {
+            basePrompt = `(masterpiece), traditional chinese ancient style portrait of ${genderBase}, ${dna}, wearing white hanfu, taoist robe, dignified pose, righteous aura, ethereal atmosphere, soft lighting, temple background, lotus, serene expression, hd, 8k`;
+        }
+
+        document.getElementById('prompt-debug').innerText = "AI 正在運算：" + (dna ? dna : "貴賓特徵") + " ...";
+
+        const aiUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(basePrompt)}?width=1024&height=1024&seed=${Math.floor(Math.random()*9999)}&nologo=true`;
+
+        const img = new Image();
+        img.onload = () => { finalImg.src = aiUrl; document.getElementById("qrcode-container").innerHTML = ""; new QRCode(document.getElementById("qrcode-container"), { text: window.location.href, width: 120, height: 120 }); switchStage('stage-4'); };
+        img.onerror = () => { alert("AI 忙碌中，請重試"); location.reload(); };
+        img.src = aiUrl;
+    }
+
+    function simulateProgress() { const bar = document.getElementById('progress-bar'); let w = 0; const int = setInterval(() => { if(w>=90) clearInterval(int); w+=10; bar.style.width=w+'%'; }, 300); }
+    function switchStage(id) { document.querySelectorAll('.stage').forEach(el => { el.style.display = 'none'; el.classList.remove('active'); }); const target = document.getElementById(id); target.style.display = 'flex'; setTimeout(()=>target.classList.add('active'), 10); }
+</script>
+</body>
+</html>
